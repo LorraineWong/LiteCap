@@ -140,10 +140,17 @@ jobs:
           **Windows 10/11:** download `LiteCap.exe` and run it. If "Windows protected your PC" appears: More info → Run anyway.
           **macOS 13+:** open `LiteCap.dmg`, drag LiteCap into Applications. First launch: System Settings → Privacy & Security → Open Anyway. Then allow Screen Recording and reopen LiteCap.
           EOF
-      - name: Create release
+      # Works both ways: tag pushed from git (release created here), or release
+      # published on github.com (files and notes are added to it).
+      - name: Create or update release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" out/LiteCap.exe out/LiteCap.dmg \
-            --title "LiteCap ${{ needs.version.outputs.version }}" \
-            --notes-file notes.md
+          title="LiteCap ${{ needs.version.outputs.version }}"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" out/LiteCap.exe out/LiteCap.dmg --clobber
+            gh release edit "$GITHUB_REF_NAME" --title "$title" --notes-file notes.md --draft=false --latest
+          else
+            gh release create "$GITHUB_REF_NAME" out/LiteCap.exe out/LiteCap.dmg \
+              --title "$title" --notes-file notes.md
+          fi

@@ -111,10 +111,11 @@ GitHub Actions (`.github/workflows/release.yml`) builds both apps on every push.
 
 1. Set the version in `windows/src/Core.cs` (`AssemblyVersion`, `AssemblyFileVersion`) and `macos/Info.plist` (`CFBundleShortVersionString`).
 2. Add a `## [x.y.z]` section to `CHANGELOG.md`.
-3. Commit, then `git tag vx.y.z && git push origin vx.y.z`.
+3. Commit and push, then either run `git tag vx.y.z && git push origin vx.y.z`,
+   or on GitHub open **Releases → Draft a new release**, create tag `vx.y.z` on `main` and click **Publish release**.
 
-The workflow checks that the tag, both version numbers and the changelog agree, then publishes
-`LiteCap.exe` and `LiteCap.dmg` as a release.
+The workflow checks that the tag, both version numbers and the changelog agree, then attaches
+`LiteCap.exe` and `LiteCap.dmg` and the changelog notes to the release (about 3 minutes).
 
 ## Project layout
 
