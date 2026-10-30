@@ -23,7 +23,7 @@ jobs:
     outputs:
       version: ${{ steps.v.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - id: v
         shell: bash
         run: |
@@ -50,14 +50,14 @@ jobs:
     needs: version
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Compile with the C# compiler built into Windows
         shell: cmd
         working-directory: windows/src
         run: |
           set CSC=%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe
           "%CSC%" /nologo /codepage:65001 /target:winexe /optimize+ /win32icon:app.ico /resource:app.ico,app.ico /resource:logo.png,logo.png /r:System.Windows.Forms.dll /r:System.Drawing.dll /out:..\..\LiteCap.exe *.cs
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: windows
           path: LiteCap.exe
@@ -68,7 +68,7 @@ jobs:
     needs: version
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Compile universal binary (Apple silicon + Intel)
         working-directory: macos
         run: |
@@ -93,10 +93,22 @@ jobs:
           iconutil -c icns Resources/AppIcon.iconset -o "$APP/Contents/Resources/AppIcon.icns"
           # Ad-hoc signature: no Apple Developer account, so first launch needs "Open Anyway".
           codesign --force --deep --sign - "$APP"
-          # DMG with an Applications shortcut: open it, drag LiteCap across.
-          mkdir -p dmg && cp -R "$APP" dmg/ && ln -s /Applications dmg/Applications
-          hdiutil create -volname LiteCap -srcfolder dmg -ov -format UDZO ../LiteCap.dmg
-      - uses: actions/upload-artifact@v4
+          # DMG: small fixed window, LiteCap on the left, Applications shortcut on the right.
+          mkdir -p dmg && cp -R "$APP" dmg/
+          brew install --quiet create-dmg
+          if ! create-dmg \
+              --volname LiteCap \
+              --window-pos 300 200 --window-size 520 300 \
+              --icon-size 96 --text-size 13 \
+              --icon LiteCap.app 140 130 --hide-extension LiteCap.app \
+              --app-drop-link 380 130 \
+              ../LiteCap.dmg dmg/; then
+            echo "::warning::create-dmg layout failed, falling back to a plain DMG"
+            rm -f ../LiteCap.dmg
+            ln -s /Applications dmg/Applications
+            hdiutil create -volname LiteCap -srcfolder dmg -ov -format UDZO ../LiteCap.dmg
+          fi
+      - uses: actions/upload-artifact@v5
         with:
           name: macos
           path: LiteCap.dmg
@@ -108,8 +120,8 @@ jobs:
     needs: [version, windows, macos]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v6
         with:
           path: out
           merge-multiple: true
