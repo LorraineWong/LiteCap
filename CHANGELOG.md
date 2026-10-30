@@ -8,7 +8,7 @@ First public release, for Windows and macOS.
 
 ### Capture
 - Region capture (drag an area, or click to pick the window under the cursor) and full-screen capture across all monitors
-- Default hotkeys — Windows: Ctrl+1 region, Ctrl+2 full screen; macOS: ⇧⌘1 region, ⇧⌘2 full screen. All customizable, with conflict checking
+- Default hotkeys — Windows: Ctrl+1 region, Ctrl+2 full screen; macOS: ⌘1 region, ⌘2 full screen, ⌘3 recognize text. All customizable, with conflict checking
 - Region editing: move/resize handles, arrow-key nudging, magnifier with coordinates and pixel colour (Windows)
 - "Region in 3 seconds": a countdown that never takes focus, so right-click menus and hover tips can be captured
 
@@ -34,7 +34,8 @@ First public release, for Windows and macOS.
 - Settings: Hotkeys, Output, General, About
 - Start with Windows / Open at login
 - Crash protection: errors are logged (Windows: %APPDATA%\LiteCap\logs, macOS: ~/Library/Logs/LiteCap) and the app keeps running
-- Windows: single executable, no installer, runs on the .NET Framework 4.x built into Windows 10/11
-- macOS: menu-bar app built locally with the free Command Line Tools (macOS 13+), ScreenCaptureKit capture on macOS 14+
+- Windows: single `LiteCap.exe`, no installer, runs on the .NET Framework 4.x built into Windows 10/11
+- macOS: `LiteCap.dmg` with a universal app (Apple silicon + Intel, macOS 13+); ScreenCaptureKit capture on macOS 14+
+- Both builds are produced by GitHub Actions and attached to each release
 
 [1.0.0]: https://github.com/LorraineWong/LiteCap/releases/tag/v1.0.0

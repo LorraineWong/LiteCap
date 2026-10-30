@@ -10,7 +10,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/LorraineWong/LiteCap/releases/latest">Download</a> ·
+  <a href="https://github.com/LorraineWong/LiteCap/releases/latest/download/LiteCap.exe">Download for Windows</a> ·
+  <a href="https://github.com/LorraineWong/LiteCap/releases/latest/download/LiteCap.dmg">Download for macOS</a> ·
   <a href="CHANGELOG.md">Changelog</a> ·
   <a href="README.zh-CN.md">中文说明</a>
 </p>
@@ -45,31 +46,34 @@ JPG that is already below the limit, at the highest quality that fits.
 
 ### Windows 10 / 11
 
-1. Download `LiteCap-1.0.0-windows.zip` from [Releases](https://github.com/LorraineWong/LiteCap/releases/latest) and unzip it.
-2. Run `LiteCap.exe`. The icon appears in the system tray.
-3. If Windows shows "Windows protected your PC", click **More info → Run anyway** (the app is not code-signed).
+1. Download **[LiteCap.exe](https://github.com/LorraineWong/LiteCap/releases/latest/download/LiteCap.exe)** and double-click it. The icon appears in the system tray.
+2. If Windows shows "Windows protected your PC", click **More info → Run anyway** (the app is not code-signed).
 
-No installer and no runtime to install — it uses the .NET Framework 4.x that ships with Windows.
+One file, no installer, nothing else to install — it uses the .NET Framework 4.x that ships with Windows.
+Tip: put it in a fixed folder (not Downloads) before turning on "Start with Windows".
 
-### macOS 13 Ventura or later
+### macOS 13 Ventura or later (Apple silicon and Intel)
 
-The macOS app is built on your own Mac, so Gatekeeper does not block it.
-
-1. Download `LiteCap-1.0.0-macos.zip` from [Releases](https://github.com/LorraineWong/LiteCap/releases/latest) and unzip it.
-2. Open **Terminal**, type `bash ` (with a trailing space), drag `Install.command` into the window and press Return.
-   If Apple's Command Line Tools are missing, the script installs them first — run it again afterwards.
+1. Download **[LiteCap.dmg](https://github.com/LorraineWong/LiteCap/releases/latest/download/LiteCap.dmg)**, open it and drag **LiteCap** into **Applications**.
+2. Open LiteCap. The first time, macOS blocks it because it is not notarized:
+   **System Settings → Privacy & Security → Open Anyway**, then confirm.
 3. In **System Settings → Privacy & Security → Screen Recording**, turn **LiteCap** on, then quit and reopen LiteCap.
 
-> After every rebuild, macOS treats the app as new: switch Screen Recording off and on again for LiteCap, then reopen it.
+> After updating to a new version, switch Screen Recording off and on again for LiteCap, then reopen it.
 > If captures come out black, this is the fix.
+
+### Updating
+
+Download the new version from [Releases](https://github.com/LorraineWong/LiteCap/releases) and replace the old file
+(Windows: quit LiteCap from the tray first). Settings are kept.
 
 ## Usage
 
 | Action | Windows | macOS |
 |---|---|---|
-| Region capture (drag, or click a window) | `Ctrl+1` | `⇧⌘1` |
-| Full screen (screen under the pointer) | `Ctrl+2` | `⇧⌘2` |
-| Recognize text | tray menu / editor `O` / optional hotkey | menu bar / editor `O` / optional hotkey |
+| Region capture (drag, or click a window) | `Ctrl+1` | `⌘1` |
+| Full screen (screen under the pointer) | `Ctrl+2` | `⌘2` |
+| Recognize text | tray menu / editor `O` / optional hotkey | `⌘3` / menu bar / editor `O` |
 | Region in 3 seconds | tray menu | menu bar |
 
 **Editor:** `R` rectangle · `E` ellipse · `A` arrow · `P` pen · `H` highlighter · `T` text · `M` mosaic · `1/2/3` size · `Ctrl/⌘+Z` undo · `O` recognize text
@@ -98,6 +102,19 @@ xcode-select --install     # once
 cd macos
 ./build.sh                 # produces LiteCap.app (ad-hoc signed)
 ```
+
+Or run `macos/Install.command`, which builds, installs into Applications and opens the app.
+
+## Releasing
+
+GitHub Actions (`.github/workflows/release.yml`) builds both apps on every push. To publish a version:
+
+1. Set the version in `windows/src/Core.cs` (`AssemblyVersion`, `AssemblyFileVersion`) and `macos/Info.plist` (`CFBundleShortVersionString`).
+2. Add a `## [x.y.z]` section to `CHANGELOG.md`.
+3. Commit, then `git tag vx.y.z && git push origin vx.y.z`.
+
+The workflow checks that the tag, both version numbers and the changelog agree, then publishes
+`LiteCap.exe` and `LiteCap.dmg` as a release.
 
 ## Project layout
 

@@ -18,24 +18,27 @@
 ## 安装
 
 **Windows 10 / 11**
-1. 在 [Releases](https://github.com/LorraineWong/LiteCap/releases/latest) 下载 `LiteCap-1.0.0-windows.zip` 并解压
-2. 运行 `LiteCap.exe`，图标出现在右下角托盘
-3. 出现 "Windows protected your PC" 时：More info → Run anyway
+1. 下载 **[LiteCap.exe](https://github.com/LorraineWong/LiteCap/releases/latest/download/LiteCap.exe)**，双击运行，图标出现在右下角托盘
+2. 出现 "Windows protected your PC" 时：More info → Run anyway
 
-**macOS 13 及以上**
-1. 下载 `LiteCap-1.0.0-macos.zip` 并解压
-2. 打开「终端」，输入 `bash `（后面有空格），把 `Install.command` 拖进去，按回车
+只有一个文件，不用安装。开启「开机启动」前，先把 exe 放到固定文件夹（不要放在"下载"里）。
+
+**macOS 13 及以上（M 系列和 Intel 都支持）**
+1. 下载 **[LiteCap.dmg](https://github.com/LorraineWong/LiteCap/releases/latest/download/LiteCap.dmg)**，打开后把 LiteCap 拖进「应用程序」
+2. 第一次打开会被拦截：系统设置 → 隐私与安全性 → 仍要打开
 3. 系统设置 → 隐私与安全性 → 屏幕录制：打开 LiteCap，然后退出并重新打开 LiteCap
 
-> 每次重新编译后，要把屏幕录制里 LiteCap 的开关关掉再打开。截图全黑就是这个原因。
+> 每次更新版本后，要把屏幕录制里 LiteCap 的开关关掉再打开。截图全黑就是这个原因。
+
+**更新**：到 [Releases](https://github.com/LorraineWong/LiteCap/releases) 下载新版，替换旧文件即可，设置会保留。
 
 ## 快捷键
 
 | 操作 | Windows | macOS |
 |---|---|---|
-| 圈选截图 | `Ctrl+1` | `⇧⌘1` |
-| 全屏截图 | `Ctrl+2` | `⇧⌘2` |
-| 识别文字 | 托盘菜单 / 编辑时按 `O` / 可自设快捷键 | 菜单栏 / 编辑时按 `O` / 可自设快捷键 |
+| 圈选截图 | `Ctrl+1` | `⌘1` |
+| 全屏截图 | `Ctrl+2` | `⌘2` |
+| 识别文字 | 托盘菜单 / 编辑时按 `O` / 可自设快捷键 | `⌘3` / 菜单栏 / 编辑时按 `O` |
 
 编辑工具：`R` 矩形 · `E` 椭圆 · `A` 箭头 · `P` 画笔 · `H` 荧光笔 · `T` 文字 · `M` 马赛克 · `1/2/3` 粗细 · 撤销 `Ctrl/⌘+Z`
 完成：`Enter` / 空格 / `Ctrl/⌘+C` / 双击选区；取消：`Esc`

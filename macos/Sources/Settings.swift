@@ -10,8 +10,13 @@ struct Hotkey: Equatable, Codable {
     static let empty = Hotkey(keyCode: UInt32.max, mods: 0)
     var isEmpty: Bool { return keyCode == UInt32.max }
 
-    static let regionDefault = Hotkey(keyCode: UInt32(kVK_ANSI_1), mods: UInt32(cmdKey | shiftKey))
-    static let fullDefault = Hotkey(keyCode: UInt32(kVK_ANSI_2), mods: UInt32(cmdKey | shiftKey))
+    static let regionDefault = Hotkey(keyCode: UInt32(kVK_ANSI_1), mods: UInt32(cmdKey))
+    static let fullDefault = Hotkey(keyCode: UInt32(kVK_ANSI_2), mods: UInt32(cmdKey))
+    static let ocrDefault = Hotkey(keyCode: UInt32(kVK_ANSI_3), mods: UInt32(cmdKey))
+
+    // Defaults before 1.0.0 (⇧⌘1 / ⇧⌘2 / no OCR key), used to migrate untouched installs.
+    static let legacyRegion = Hotkey(keyCode: UInt32(kVK_ANSI_1), mods: UInt32(cmdKey | shiftKey))
+    static let legacyFull = Hotkey(keyCode: UInt32(kVK_ANSI_2), mods: UInt32(cmdKey | shiftKey))
 
     var modifierSymbols: [String] {
         var out: [String] = []
@@ -122,9 +127,17 @@ final class AppSettings: ObservableObject {
             ud.set(1, forKey: "langVer")
         }
         lang = Lang(rawValue: ud.string(forKey: "lang") ?? "") ?? .en
+        // hkVer 1: defaults moved to ⌘1 / ⌘2 / ⌘3. Only hotkeys still at the old defaults are reset;
+        // anything the user customised is kept.
+        if ud.integer(forKey: "hkVer") < 1 {
+            if AppSettings.load(ud, "hkRegion") == Hotkey.legacyRegion { ud.removeObject(forKey: "hkRegion") }
+            if AppSettings.load(ud, "hkFull") == Hotkey.legacyFull { ud.removeObject(forKey: "hkFull") }
+            if AppSettings.load(ud, "hkOcr") == Hotkey.empty { ud.removeObject(forKey: "hkOcr") }
+            ud.set(1, forKey: "hkVer")
+        }
         hkRegion = AppSettings.load(ud, "hkRegion") ?? Hotkey.regionDefault
         hkFull = AppSettings.load(ud, "hkFull") ?? Hotkey.fullDefault
-        hkOcr = AppSettings.load(ud, "hkOcr") ?? Hotkey.empty
+        hkOcr = AppSettings.load(ud, "hkOcr") ?? Hotkey.ocrDefault
         L.lang = lang
     }
 

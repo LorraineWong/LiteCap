@@ -1,0 +1,137 @@
+# Builds LiteCap for Windows and macOS on every push and pull request.
+# Pushing a tag like v1.2.3 also publishes a GitHub Release with:
+#   LiteCap.exe      - Windows, single file, no installer
+#   LiteCap.dmg      - macOS, drag LiteCap into Applications
+# Release notes are taken from the matching section of CHANGELOG.md.
+
+name: Build & Release
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    name: Check version numbers
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        shell: bash
+        run: |
+          set -euo pipefail
+          win=$(grep -oP 'AssemblyVersion\("\K[0-9]+\.[0-9]+\.[0-9]+' windows/src/Core.cs)
+          mac=$(grep -A1 CFBundleShortVersionString macos/Info.plist | grep -oP '<string>\K[^<]+')
+          echo "Windows: $win  macOS: $mac"
+          if [ "$win" != "$mac" ]; then
+            echo "::error::Version mismatch: windows/src/Core.cs=$win, macos/Info.plist=$mac"; exit 1
+          fi
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            tag="${GITHUB_REF_NAME#v}"
+            if [ "$tag" != "$win" ]; then
+              echo "::error::Tag v$tag does not match app version $win. Update Core.cs and Info.plist first."; exit 1
+            fi
+            if ! grep -q "^## \[$tag\]" CHANGELOG.md; then
+              echo "::error::CHANGELOG.md has no '## [$tag]' section."; exit 1
+            fi
+          fi
+          echo "version=$win" >> "$GITHUB_OUTPUT"
+
+  windows:
+    name: Build Windows
+    needs: version
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile with the C# compiler built into Windows
+        shell: cmd
+        working-directory: windows/src
+        run: |
+          set CSC=%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe
+          "%CSC%" /nologo /codepage:65001 /target:winexe /optimize+ /win32icon:app.ico /resource:app.ico,app.ico /resource:logo.png,logo.png /r:System.Windows.Forms.dll /r:System.Drawing.dll /out:..\..\LiteCap.exe *.cs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: LiteCap.exe
+          if-no-files-found: error
+
+  macos:
+    name: Build macOS
+    needs: version
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile universal binary (Apple silicon + Intel)
+        working-directory: macos
+        run: |
+          set -euo pipefail
+          SDK="$(xcrun --sdk macosx --show-sdk-path)"
+          mkdir -p build
+          for arch in arm64 x86_64; do
+            xcrun swiftc -O -sdk "$SDK" -target "$arch-apple-macos13.0" \
+              -module-name LiteCap Sources/*.swift -o "build/LiteCap-$arch"
+          done
+          lipo -create build/LiteCap-arm64 build/LiteCap-x86_64 -output build/LiteCap
+          lipo -info build/LiteCap
+      - name: Package LiteCap.app and LiteCap.dmg
+        working-directory: macos
+        run: |
+          set -euo pipefail
+          APP=dist/LiteCap.app
+          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+          cp build/LiteCap "$APP/Contents/MacOS/LiteCap"
+          cp Info.plist "$APP/Contents/Info.plist"
+          cp Resources/MenuIcon.png Resources/MenuIcon@2x.png "$APP/Contents/Resources/"
+          iconutil -c icns Resources/AppIcon.iconset -o "$APP/Contents/Resources/AppIcon.icns"
+          # Ad-hoc signature: no Apple Developer account, so first launch needs "Open Anyway".
+          codesign --force --deep --sign - "$APP"
+          # DMG with an Applications shortcut: open it, drag LiteCap across.
+          mkdir -p dmg && cp -R "$APP" dmg/ && ln -s /Applications dmg/Applications
+          hdiutil create -volname LiteCap -srcfolder dmg -ov -format UDZO ../LiteCap.dmg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: LiteCap.dmg
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [version, windows, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+      - name: Extract release notes from CHANGELOG.md
+        run: |
+          v="${{ needs.version.outputs.version }}"
+          awk -v v="$v" '
+            $0 ~ "^## \\[" v "\\]" {on=1; next}
+            on && /^## \[/ {exit}
+            on && /^\[[0-9.]+\]:/ {next}
+            on {print}
+          ' CHANGELOG.md > notes.md
+          cat >> notes.md <<'EOF'
+
+          ---
+          **Windows 10/11:** download `LiteCap.exe` and run it. If "Windows protected your PC" appears: More info → Run anyway.
+          **macOS 13+:** open `LiteCap.dmg`, drag LiteCap into Applications. First launch: System Settings → Privacy & Security → Open Anyway. Then allow Screen Recording and reopen LiteCap.
+          EOF
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" out/LiteCap.exe out/LiteCap.dmg \
+            --title "LiteCap ${{ needs.version.outputs.version }}" \
+            --notes-file notes.md

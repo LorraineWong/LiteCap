@@ -182,7 +182,7 @@ struct HotkeysTab: View {
                 Button(L.t("reset")) {
                     s.hkRegion = Hotkey.regionDefault
                     s.hkFull = Hotkey.fullDefault
-                    s.hkOcr = Hotkey.empty
+                    s.hkOcr = Hotkey.ocrDefault
                 }
             }
         }
