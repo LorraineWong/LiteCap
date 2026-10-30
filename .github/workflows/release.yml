@@ -57,7 +57,7 @@ jobs:
         run: |
           set CSC=%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe
           "%CSC%" /nologo /codepage:65001 /target:winexe /optimize+ /win32icon:app.ico /resource:app.ico,app.ico /resource:logo.png,logo.png /r:System.Windows.Forms.dll /r:System.Drawing.dll /out:..\..\LiteCap.exe *.cs
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: windows
           path: LiteCap.exe
@@ -108,7 +108,7 @@ jobs:
             ln -s /Applications dmg/Applications
             hdiutil create -volname LiteCap -srcfolder dmg -ov -format UDZO ../LiteCap.dmg
           fi
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: macos
           path: LiteCap.dmg
