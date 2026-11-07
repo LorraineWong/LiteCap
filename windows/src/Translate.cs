@@ -840,7 +840,7 @@ namespace LiteCap
     static class OfflineTranslator
     {
         public const int PackVersion = 1;
-        public const int PackMB = 230;   // download size shown to the user
+        public const int PackMB = 170;   // download size shown to the user
         public const string PackUrl = "https://github.com/LorraineWong/LiteCap/releases/download/translate-pack-1/LiteCap-Translate-1.zip";
         public const string PackPage = "https://github.com/LorraineWong/LiteCap/releases/tag/translate-pack-1";
 

@@ -116,7 +116,7 @@ jobs:
           $lines = $text -split "`n" | Where-Object { $_ -match "=>" }
           $toEn = ($lines | Where-Object { $_ -like "zh-en*" }) -join "`n"
           $toZh = ($lines | Where-Object { $_ -like "en-zh*" }) -join "`n"
-          if ($toEn -notmatch '(?i)weather') { Write-Error "zh-en output looks wrong"; exit 1 }
+          if ($toEn -notmatch '(?i)park') { Write-Error "zh-en output looks wrong"; exit 1 }
           if ($toZh -notmatch '[一-鿿]{4,}') { Write-Error "en-zh output looks wrong"; exit 1 }
           "Self-test passed" | Write-Host
 

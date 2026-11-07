@@ -97,7 +97,7 @@ automatically). Wrapped lines are joined into sentences first; the translation i
 **Show original** switches back.
 
 - **Windows** runs OPUS-MT models with ONNX Runtime on your PC. The first time, LiteCap asks to download the
-  translation pack once (about 230 MB, from this repository's
+  translation pack once (about 170 MB, from this repository's
   [translate-pack-1](https://github.com/LorraineWong/LiteCap/releases/tag/translate-pack-1) release) into
   `%LOCALAPPDATA%\LiteCap\translate`. If the download is blocked (for example by a company proxy), download
   `LiteCap-Translate-1.zip` in your browser and choose it when LiteCap asks. After that, nothing goes online.

@@ -7,7 +7,7 @@ All notable changes to LiteCap are documented here. The project follows [Semanti
 ### Added
 - **PNG output**: Settings → Output → Format: JPG or PNG. PNG is lossless and has no size limit; the size limit applies to JPG only
 - **Offline translation (Chinese ↔ English)** in the text-recognition window: direction detected automatically, wrapped lines joined into sentences first, result copied automatically, "Show original" switches back, edits in either view are kept
-  - Windows: OPUS-MT models on ONNX Runtime, run on the PC. A one-time translation pack (about 230 MB) is downloaded on first use after confirmation; if the download is blocked, the zip can be downloaded in a browser and chosen manually. `LiteCap.exe` stays a single small file
+  - Windows: OPUS-MT models on ONNX Runtime, run on the PC. A one-time translation pack (about 170 MB) is downloaded on first use after confirmation; if the download is blocked, the zip can be downloaded in a browser and chosen manually. `LiteCap.exe` stays a single small file
   - macOS 15+: Apple's built-in Translation framework (the system asks once to download the languages). Hidden on macOS 13–14
 
 ### Changed

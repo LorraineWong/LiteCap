@@ -53,7 +53,7 @@
 
 在识别文字窗口点 **译成英文 / 译成中文**（自动判断方向）。会先把折行合并成句子再翻译，结果自动复制；点 **显示原文** 切回。
 
-- **Windows**：用 OPUS-MT 模型在本机运行。第一次使用时会询问是否下载翻译包（约 230 MB，只需一次），存在 `%LOCALAPPDATA%\LiteCap\translate`。公司网络拦截下载时，可以用浏览器从 [translate-pack-1](https://github.com/LorraineWong/LiteCap/releases/tag/translate-pack-1) 下载 `LiteCap-Translate-1.zip`，再在 LiteCap 提示时选择这个文件。
+- **Windows**：用 OPUS-MT 模型在本机运行。第一次使用时会询问是否下载翻译包（约 170 MB，只需一次），存在 `%LOCALAPPDATA%\LiteCap\translate`。公司网络拦截下载时，可以用浏览器从 [translate-pack-1](https://github.com/LorraineWong/LiteCap/releases/tag/translate-pack-1) 下载 `LiteCap-Translate-1.zip`，再在 LiteCap 提示时选择这个文件。
 - **macOS 15 及以上**：用系统自带的「翻译」，第一次使用时系统会提示下载语言。macOS 13–14 不显示翻译按钮。
 
 翻译质量：看懂意思没问题，专业术语可能生硬，不适合直接对外发布。
