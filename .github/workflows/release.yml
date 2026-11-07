@@ -56,7 +56,17 @@ jobs:
         working-directory: windows/src
         run: |
           set CSC=%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe
-          "%CSC%" /nologo /codepage:65001 /target:winexe /optimize+ /win32icon:app.ico /resource:app.ico,app.ico /resource:logo.png,logo.png /r:System.Windows.Forms.dll /r:System.Drawing.dll /out:..\..\LiteCap.exe *.cs
+          "%CSC%" /nologo /codepage:65001 /target:winexe /optimize+ /win32icon:app.ico /resource:app.ico,app.ico /resource:logo.png,logo.png /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll /out:..\..\LiteCap.exe *.cs
+      - name: Offline translation self-test (when the pack is published)
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download translate-pack-1 -p "LiteCap-Translate-1.zip" -R $env:GITHUB_REPOSITORY 2>$null
+          if (-not (Test-Path LiteCap-Translate-1.zip)) { Write-Host "::warning::Translation pack not published yet; self-test skipped"; exit 0 }
+          $p = Start-Process -FilePath .\LiteCap.exe -ArgumentList '--translate-selftest', "`"$pwd\LiteCap-Translate-1.zip`"", "`"$pwd\selftest.txt`"" -Wait -PassThru
+          Get-Content selftest.txt -Encoding UTF8
+          if ($p.ExitCode -ne 0) { exit 1 }
       - uses: actions/upload-artifact@v6
         with:
           name: windows
@@ -137,8 +147,8 @@ jobs:
           cat >> notes.md <<'EOF'
 
           ---
-          **Windows 10/11:** download `LiteCap.exe` and run it. If "Windows protected your PC" appears: More info → Run anyway.
-          **macOS 13+:** open `LiteCap.dmg`, drag LiteCap into Applications. First launch: System Settings → Privacy & Security → Open Anyway. Then allow Screen Recording and reopen LiteCap.
+          **Windows 10/11:** download `LiteCap.exe` and run it. If "Windows protected your PC" appears: More info → Run anyway. Offline translation downloads its pack (Chinese ↔ English) the first time you use it.
+          **macOS 13+:** open `LiteCap.dmg`, drag LiteCap into Applications. First launch: System Settings → Privacy & Security → Open Anyway. Then allow Screen Recording and reopen LiteCap. Offline translation needs macOS 15+.
           EOF
       # Works both ways: tag pushed from git (release created here), or release
       # published on github.com (files and notes are added to it).

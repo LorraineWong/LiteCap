@@ -205,18 +205,30 @@ struct SavedShot {
 }
 
 enum Output {
+    static func encodePNG(_ img: CGImage) -> Data {
+        let data = NSMutableData()
+        guard let dest = CGImageDestinationCreateWithData(data, "public.png" as CFString, 1, nil) else { return Data() }
+        CGImageDestinationAddImage(dest, img, nil)
+        CGImageDestinationFinalize(dest)
+        return data as Data
+    }
+
     // Safe to call off the main thread: takes plain values, not the shared settings object.
-    static func save(_ img: CGImage, maxKB: Int, folder: String) throws -> SavedShot {
-        let fit = JpegFitter.fit(img, maxBytes: maxKB * 1000)
+    // JPG is fitted under maxKB; PNG is lossless and has no size limit (quality is reported as 0).
+    static func save(_ img: CGImage, maxKB: Int, folder: String, png: Bool) throws -> SavedShot {
+        let fit: (data: Data, quality: Int, width: Int, height: Int) = png
+            ? (encodePNG(img), 0, img.width, img.height)
+            : JpegFitter.fit(img, maxBytes: maxKB * 1000)
+        let ext = png ? "png" : "jpg"
         let dir = URL(fileURLWithPath: folder, isDirectory: true)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let fmt = DateFormatter()
         fmt.dateFormat = "yyyyMMdd_HHmmss"
         let base = "LiteCap_" + fmt.string(from: Date())
-        var url = dir.appendingPathComponent(base + ".jpg")
+        var url = dir.appendingPathComponent(base + "." + ext)
         var n = 2
         while FileManager.default.fileExists(atPath: url.path) {
-            url = dir.appendingPathComponent("\(base)_\(n).jpg")
+            url = dir.appendingPathComponent("\(base)_\(n).\(ext)")
             n += 1
         }
         try fit.data.write(to: url)
@@ -225,7 +237,7 @@ enum Output {
                          original: CGSize(width: img.width, height: img.height))
     }
 
-    // Copies the saved jpg as a file, so pasting gives exactly this file.
+    // Copies the saved jpg/png as a file, so pasting gives exactly this file.
     static func copyFile(_ url: URL) {
         let pb = NSPasteboard.general
         pb.clearContents()

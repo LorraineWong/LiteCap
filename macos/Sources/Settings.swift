@@ -95,6 +95,7 @@ final class AppSettings: ObservableObject {
     private let d = UserDefaults.standard
 
     @Published var maxKB: Int { didSet { d.set(maxKB, forKey: "maxKB") } }
+    @Published var png: Bool { didSet { d.set(png ? "png" : "jpg", forKey: "format") } }   // PNG: lossless, no size limit
     @Published var editAfterCapture: Bool { didSet { d.set(editAfterCapture, forKey: "editAfterCapture") } }
     @Published var showPreview: Bool { didSet { d.set(showPreview, forKey: "showPreview") } }
     @Published var folder: String { didSet { d.set(folder, forKey: "folder") } }
@@ -118,6 +119,7 @@ final class AppSettings: ObservableObject {
         let ud = UserDefaults.standard
         let kb = ud.integer(forKey: "maxKB")
         maxKB = kb >= 10 ? kb : 100
+        png = ud.string(forKey: "format") == "png"
         editAfterCapture = ud.object(forKey: "editAfterCapture") as? Bool ?? true
         showPreview = ud.object(forKey: "showPreview") as? Bool ?? true
         folder = ud.string(forKey: "folder") ?? AppSettings.defaultFolder

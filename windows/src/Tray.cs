@@ -345,7 +345,8 @@ namespace LiteCap
 
     class Shot
     {
-        public byte[] Jpg;
+        public byte[] Data;
+        public bool Png;
         public int Quality;
         public Size Size, Original;
         public string Path;
@@ -402,8 +403,8 @@ namespace LiteCap
 
         void UpdateTrayText()
         {
-            tray.Text = L.F("tray_tip", L.T("app"), settings.MaxKB);
-            if (header != null) header.Text = L.F("header", L.T("app"), settings.MaxKB);
+            tray.Text = settings.Png ? L.F("tray_tip_png", L.T("app")) : L.F("tray_tip", L.T("app"), settings.MaxKB);
+            if (header != null) header.Text = settings.Png ? L.F("header_png", L.T("app")) : L.F("header", L.T("app"), settings.MaxKB);
         }
 
         string HotkeySummary()
@@ -672,16 +673,27 @@ namespace LiteCap
         {
             Shot shot = new Shot();
             shot.Original = img.Size;
-            shot.Jpg = JpegFitter.Fit(img, s.MaxKB * 1000, out shot.Quality, out shot.Size);
+            shot.Png = s.Png;
+            if (s.Png)
+            {
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    img.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+                    shot.Data = ms.ToArray();
+                }
+                shot.Size = img.Size;
+            }
+            else shot.Data = JpegFitter.Fit(img, s.MaxKB * 1000, out shot.Quality, out shot.Size);
 
             Directory.CreateDirectory(s.Folder);
+            string ext = s.Png ? ".png" : ".jpg";
             string name = "LiteCap_" + DateTime.Now.ToString("yyyyMMdd_HHmmss");
-            string path = System.IO.Path.Combine(s.Folder, name + ".jpg");
+            string path = System.IO.Path.Combine(s.Folder, name + ext);
             int n = 2;
-            while (File.Exists(path)) path = System.IO.Path.Combine(s.Folder, name + "_" + (n++) + ".jpg");
+            while (File.Exists(path)) path = System.IO.Path.Combine(s.Folder, name + "_" + (n++) + ext);
             using (FileStream fs = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.Read | FileShare.Delete))
             {
-                fs.Write(shot.Jpg, 0, shot.Jpg.Length);
+                fs.Write(shot.Data, 0, shot.Data.Length);
                 fs.Flush(true);
             }
             shot.Path = path;
@@ -690,20 +702,20 @@ namespace LiteCap
 
         void Deliver(Shot shot, Settings s)
         {
-            // Always copy as a file so the pasted/uploaded item is exactly the saved jpg.
+            // Always copy as a file so the pasted/uploaded item is exactly the saved jpg/png.
             DataObject data = new DataObject();
             data.SetData(DataFormats.FileDrop, new string[] { shot.Path });
             try { Clipboard.SetDataObject(data, true, 8, 100); }
             catch (ExternalException) { }
 
             if (!s.ShowPreview) return;
-            using (MemoryStream ms = new MemoryStream(shot.Jpg))
+            using (MemoryStream ms = new MemoryStream(shot.Data))
             using (Image decoded = Image.FromStream(ms))
             {
-                string title = L.F("toast_title", (shot.Jpg.Length / 1000.0).ToString("0.0"));
+                string title = L.F("toast_title", (shot.Data.Length / 1000.0).ToString("0.0"));
                 string info = shot.Size.Width + "×" + shot.Size.Height
                     + (shot.Size != shot.Original ? L.F("toast_orig", shot.Original.Width, shot.Original.Height) : "")
-                    + "  ·  " + L.F("toast_quality", shot.Quality);
+                    + "  ·  " + (shot.Png ? "PNG" : L.F("toast_quality", shot.Quality));
                 PreviewToast.Pop(decoded, title, info, shot.Path);
             }
         }

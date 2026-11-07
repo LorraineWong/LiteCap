@@ -1,5 +1,6 @@
 // Text-recognition window: screenshot preview with line boxes on the left, editable text on the right.
 // States: recognizing -> result (auto-copied) | no text | error.
+// On macOS 15+ the result can be translated offline (Chinese <-> English) with Apple's Translation.
 // Uses only ObservableObject + @ObservedObject (no @State/@Binding macros, which the
 // Command Line Tools cannot expand).
 
@@ -17,6 +18,17 @@ final class OcrModel: ObservableObject {
     @Published var copied = false
     @Published var selectedLine = -1
     @Published var hoverLine = -1
+
+    // Translation
+    @Published var translating = false
+    @Published var showingTranslation = false
+    @Published var translationRequest: Any?     // TranslationSession.Configuration on macOS 15+
+    var direction = "zh-en"
+    var trSource = ""
+    var originalText = ""
+    var translatedText: String?
+    var ocrStats = ""
+    var trStats = ""
 
     var lines: [String] = []
     var boxes: [CGRect] = []
@@ -42,7 +54,9 @@ final class OcrModel: ObservableObject {
     }
 
     func select(_ i: Int) {
-        guard phase == .result, i >= 0, i < lines.count, let tv = textView else { return }
+        guard phase == .result, i >= 0, i < lines.count else { return }
+        if showingTranslation { setShowing(false) }
+        guard let tv = textView else { return }
         selectedLine = i
         let text = tv.string as NSString
         var range = NSRange(location: NSNotFound, length: 0)
@@ -57,6 +71,52 @@ final class OcrModel: ObservableObject {
         tv.window?.makeFirstResponder(tv)
         tv.setSelectedRange(range)
         tv.scrollRangeToVisible(range)
+    }
+
+    var translateLabel: String {
+        if translating { return L.t("tr_working") }
+        if translatedText != nil { return L.t(showingTranslation ? "tr_show_orig" : "tr_show_trans") }
+        return L.t(direction == "zh-en" ? "tr_to_en" : "tr_to_zh")
+    }
+
+    func translateClicked() {
+        guard phase == .result, !translating else { return }
+        if translatedText != nil { setShowing(!showingTranslation); return }
+        originalText = currentText
+        // Wrapped lines are joined first: the engine translates sentences, not fragments.
+        trSource = merge ? originalText : MacOCR.merge(originalText.components(separatedBy: "\n"))
+        direction = MacTranslate.detectDirection(trSource)
+        translating = true
+        translationRequest = MacTranslate.configuration(direction: direction)
+    }
+
+    func finishTranslation(_ text: String) {
+        translating = false
+        translatedText = text
+        let toEn = direction == "zh-en"
+        trStats = L.f("tr_stats", L.t(toEn ? "tr_zh" : "tr_en"), L.t(toEn ? "tr_en" : "tr_zh"))
+        setShowing(true)
+        copy()
+    }
+
+    func failTranslation(_ error: Error) {
+        Log.write(error, context: "translate")
+        translating = false
+        translationRequest = nil   // a new request object re-runs the task next time
+        stats = L.f("tr_failed", error.localizedDescription)
+    }
+
+    func setShowing(_ on: Bool) {
+        if on != showingTranslation {
+            // Keep any edits the user made in either view.
+            if showingTranslation { translatedText = currentText } else { originalText = currentText }
+            showingTranslation = on
+            let t = (on ? translatedText : originalText) ?? ""
+            pendingText = t
+            textView?.string = t
+        }
+        stats = on ? trStats : ocrStats
+        selectedLine = -1
     }
 
     func copy() {
@@ -180,13 +240,22 @@ struct OcrView: View {
                     .frame(minWidth: 260, maxWidth: .infinity)
                 VStack(alignment: .leading, spacing: 10) {
                     if model.phase == .result {
-                        Picker("", selection: $model.merge) {
-                            Text(L.t("ocr_keep_lines")).tag(false)
-                            Text(L.t("ocr_merge_lines")).tag(true)
+                        HStack {
+                            if !model.showingTranslation {
+                                Picker("", selection: $model.merge) {
+                                    Text(L.t("ocr_keep_lines")).tag(false)
+                                    Text(L.t("ocr_merge_lines")).tag(true)
+                                }
+                                .pickerStyle(.segmented)
+                                .labelsHidden()
+                                .fixedSize()
+                            }
+                            Spacer()
+                            if MacTranslate.supported {
+                                Button(model.translateLabel) { model.translateClicked() }
+                                    .disabled(model.translating)
+                            }
                         }
-                        .pickerStyle(.segmented)
-                        .labelsHidden()
-                        .fixedSize()
                     }
                     ZStack {
                         RoundedRectangle(cornerRadius: 10).fill(Color(NSColor.textBackgroundColor))
@@ -219,6 +288,7 @@ struct OcrView: View {
         }
         .padding(20)
         .frame(minWidth: 720, minHeight: 440)
+        .modifier(TranslationHost(model: model))
     }
 }
 
@@ -262,6 +332,8 @@ final class OcrWindowController {
         model.boxes = out.boxes
         let chars = out.lines.reduce(0) { $0 + $1.count }
         model.stats = L.f("ocr_stats", out.lines.count, chars)
+        model.ocrStats = model.stats
+        model.direction = MacTranslate.detectDirection(out.text)
         model.title = L.t("ocr_done")
         model.pendingText = out.text
         model.phase = .result

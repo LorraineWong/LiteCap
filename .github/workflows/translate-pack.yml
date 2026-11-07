@@ -1,0 +1,143 @@
+# Builds the offline translation pack that LiteCap for Windows downloads on first use:
+#   LiteCap-Translate-1.zip
+#     ort/win-x64/onnxruntime.dll, ort/win-arm64/onnxruntime.dll   ONNX Runtime (CPU) from NuGet
+#     zh-en/, en-zh/   encoder.onnx + decoder.onnx (int8 Opus-MT, converted by Xenova),
+#                      source.spm, vocab.json, config.json (Helsinki-NLP)
+# then translates sample sentences with LiteCap.exe on a real Windows machine.
+# Run it manually with "publish" ticked to attach the zip to the translate-pack-1 release.
+# (macOS needs no pack: it uses Apple's built-in Translation framework.)
+
+name: Translation pack
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the zip to the translate-pack-1 release
+        type: boolean
+        default: false
+  pull_request:
+    paths:
+      - windows/src/Translate.cs
+      - .github/workflows/translate-pack.yml
+  push:
+    branches: ["feature/**"]
+    paths:
+      - windows/src/Translate.cs
+      - .github/workflows/translate-pack.yml
+
+permissions:
+  contents: write
+
+env:
+  PACK: LiteCap-Translate-1
+  RELEASE_TAG: translate-pack-1
+  ORT_VERSION: 1.20.1
+
+jobs:
+  build:
+    name: Build pack
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Download Opus-MT models
+        run: |
+          set -euo pipefail
+          pip install -q "huggingface_hub>=0.23"
+          python - <<'EOF'
+          import os, shutil
+          from huggingface_hub import hf_hub_download
+          root = os.environ["PACK"]
+          for pair in ("zh-en", "en-zh"):
+              d = os.path.join(root, pair)
+              os.makedirs(d, exist_ok=True)
+              onnx, orig = f"Xenova/opus-mt-{pair}", f"Helsinki-NLP/opus-mt-{pair}"
+              for repo, name, out in [(onnx, "onnx/encoder_model_quantized.onnx", "encoder.onnx"),
+                                      (onnx, "onnx/decoder_model_merged_quantized.onnx", "decoder.onnx"),
+                                      (orig, "config.json", "config.json"),
+                                      (orig, "source.spm", "source.spm"),
+                                      (orig, "vocab.json", "vocab.json")]:
+                  shutil.copy(hf_hub_download(repo, name), os.path.join(d, out))
+          EOF
+      - name: Add ONNX Runtime ${{ env.ORT_VERSION }}
+        run: |
+          set -euo pipefail
+          curl -sSfL -o ort.nupkg "https://www.nuget.org/api/v2/package/Microsoft.ML.OnnxRuntime/$ORT_VERSION"
+          unzip -q ort.nupkg "runtimes/win-x64/native/onnxruntime.dll" "runtimes/win-arm64/native/onnxruntime.dll" "LICENSE*" -d ortpkg
+          mkdir -p "$PACK/ort/win-x64" "$PACK/ort/win-arm64"
+          cp ortpkg/runtimes/win-x64/native/onnxruntime.dll "$PACK/ort/win-x64/"
+          cp ortpkg/runtimes/win-arm64/native/onnxruntime.dll "$PACK/ort/win-arm64/"
+      - name: Notices and zip
+        run: |
+          set -euo pipefail
+          cat > "$PACK/NOTICE.txt" <<EOF
+          LiteCap offline translation pack (Windows)
+
+          Translation models: OPUS-MT by Helsinki-NLP (opus-mt-zh-en, opus-mt-en-zh), CC BY 4.0
+            https://huggingface.co/Helsinki-NLP/opus-mt-zh-en
+            https://huggingface.co/Helsinki-NLP/opus-mt-en-zh
+          ONNX conversion (int8): Xenova, https://huggingface.co/Xenova
+          ONNX Runtime $ORT_VERSION: Microsoft, MIT License, https://github.com/microsoft/onnxruntime
+
+          Unzip is done by LiteCap into %LOCALAPPDATA%\LiteCap\translate. Everything runs offline.
+          EOF
+          zip -qr -9 "$PACK.zip" "$PACK"
+          ls -la "$PACK.zip"; du -ah "$PACK" | sort -h | tail -12
+      - uses: actions/upload-artifact@v6
+        with:
+          name: translate-pack
+          path: ${{ env.PACK }}.zip
+          if-no-files-found: error
+
+  test:
+    name: Translate on Windows
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v6
+        with:
+          name: translate-pack
+      - name: Compile LiteCap.exe
+        shell: cmd
+        working-directory: windows/src
+        run: |
+          set CSC=%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe
+          "%CSC%" /nologo /codepage:65001 /target:winexe /optimize+ /win32icon:app.ico /resource:app.ico,app.ico /resource:logo.png,logo.png /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll /out:..\..\LiteCap.exe *.cs
+      - name: Self-test with the real models
+        shell: pwsh
+        run: |
+          $zip = Join-Path $pwd "$env:PACK.zip"
+          $out = Join-Path $pwd "selftest.txt"
+          $p = Start-Process -FilePath .\LiteCap.exe -ArgumentList '--translate-selftest', "`"$zip`"", "`"$out`"" -Wait -PassThru
+          $text = Get-Content $out -Raw -Encoding UTF8
+          Write-Host $text
+          if ($p.ExitCode -ne 0) { Write-Error "Self-test exit code $($p.ExitCode)"; exit 1 }
+          $lines = $text -split "`n" | Where-Object { $_ -match "=>" }
+          $toEn = ($lines | Where-Object { $_ -like "zh-en*" }) -join "`n"
+          $toZh = ($lines | Where-Object { $_ -like "en-zh*" }) -join "`n"
+          if ($toEn -notmatch '(?i)weather') { Write-Error "zh-en output looks wrong"; exit 1 }
+          if ($toZh -notmatch '[一-鿿]{4,}') { Write-Error "en-zh output looks wrong"; exit 1 }
+          "Self-test passed" | Write-Host
+
+  publish:
+    name: Publish pack
+    if: github.event_name == 'workflow_dispatch' && inputs.publish
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v6
+        with:
+          name: translate-pack
+      - name: Upload to the translate-pack release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --prerelease --latest=false --target "$GITHUB_SHA" \
+              --title "Offline translation pack 1 (Windows)" \
+              --notes "Downloaded automatically by LiteCap for Windows the first time you use **Translate** in the text-recognition window. Install manually only if the automatic download fails: download \`$PACK.zip\`, then choose it in LiteCap when asked. Chinese ↔ English, fully offline. Models: OPUS-MT (Helsinki-NLP, CC BY 4.0); runtime: ONNX Runtime (MIT)."
+          fi
+          gh release upload "$RELEASE_TAG" "$PACK.zip" --clobber

@@ -18,7 +18,7 @@ namespace LiteCap
         {
             public Hotkey Region, Full, Ocr;
             public string Kb, Folder, Lang;
-            public bool Edit, Preview, Auto;
+            public bool Edit, Preview, Auto, Png;
             public int Page;
         }
 
@@ -26,7 +26,7 @@ namespace LiteCap
         FieldBox fbKB, fbFolder;
         Toggle tgEdit, tgPreview, tgAuto;
         Label lblError;
-        List<FlatButton> chips, langButtons;
+        List<FlatButton> chips, langButtons, formatButtons;
         List<NavItem> nav;
         List<Panel> pages;
         bool built;
@@ -82,6 +82,7 @@ namespace LiteCap
             draft.Full = s.HkFull;
             draft.Ocr = s.HkOcr;
             draft.Kb = s.MaxKB.ToString();
+            draft.Png = s.Png;
             draft.Folder = s.Folder;
             draft.Lang = s.Lang;
             draft.Edit = s.AdjustSelection;
@@ -126,6 +127,7 @@ namespace LiteCap
             tgEdit = new Toggle(); tgPreview = new Toggle(); tgAuto = new Toggle();
             chips = new List<FlatButton>();
             langButtons = new List<FlatButton>();
+            formatButtons = new List<FlatButton>();
             nav = new List<NavItem>();
             pages = new List<Panel>();
 
@@ -292,13 +294,36 @@ namespace LiteCap
         {
             Panel page = NewPage(L.T("nav_output"), L.T("out_sub"));
             int rowH = Ui.Px(68), pad = Ui.Px(20);
-            Card card = NewCard(page, cardTop, rowH + Ui.Px(118));
+            Card card = NewCard(page, cardTop, rowH * 2 + Ui.Px(118));
 
-            RowText(card, L.T("limit"), L.T("limit_desc"), 0, rowH, pad);
+            // Format: segmented JPG / PNG.
+            RowText(card, L.T("format"), L.T("format_desc"), 0, rowH, pad);
+            int fx = contentW - pad;
+            string[] fmts = { "PNG", "JPG" };
+            foreach (string f in fmts)
+            {
+                FlatButton b = SmallButton(f, Ui.Px(70));
+                fx -= b.Width;
+                b.Location = new Point(fx, (rowH - b.Height) / 2);
+                fx -= Ui.Px(6);
+                bool png = f == "PNG";
+                b.Selected = draft.Png == png;
+                b.Click += delegate
+                {
+                    draft.Png = png;
+                    foreach (FlatButton o in formatButtons) o.Selected = (o.Text == "PNG") == png;
+                };
+                card.Controls.Add(b);
+                formatButtons.Add(b);
+            }
+            card.Dividers.Add(rowH);
+
+            int ly = rowH;
+            RowText(card, L.T("limit"), L.T("limit_desc"), ly, rowH, pad);
             Label unit = MakeLabel("KB", fBody, Ui.InkSoft, Ui.Surface);
             card.Controls.Add(unit);
-            unit.Location = new Point(contentW - pad - unit.PreferredWidth, (rowH - unit.PreferredHeight) / 2);
-            fbKB.Bounds = new Rectangle(unit.Left - Ui.Px(8) - Ui.Px(76), (rowH - Ui.Px(36)) / 2, Ui.Px(76), Ui.Px(36));
+            unit.Location = new Point(contentW - pad - unit.PreferredWidth, ly + (rowH - unit.PreferredHeight) / 2);
+            fbKB.Bounds = new Rectangle(unit.Left - Ui.Px(8) - Ui.Px(76), ly + (rowH - Ui.Px(36)) / 2, Ui.Px(76), Ui.Px(36));
             fbKB.Box.Text = draft.Kb;
             fbKB.Box.TextAlign = HorizontalAlignment.Center;
             fbKB.Box.MaxLength = 5;
@@ -310,7 +335,7 @@ namespace LiteCap
             {
                 FlatButton chip = SmallButton(v, Ui.Px(50));
                 cx -= chip.Width;
-                chip.Location = new Point(cx, (rowH - chip.Height) / 2);
+                chip.Location = new Point(cx, ly + (rowH - chip.Height) / 2);
                 cx -= Ui.Px(6);
                 string val = v;
                 chip.Click += delegate { fbKB.Box.Text = val; };
@@ -318,9 +343,9 @@ namespace LiteCap
                 chips.Add(chip);
             }
             SyncChips();
-            card.Dividers.Add(rowH);
+            card.Dividers.Add(rowH * 2);
 
-            int y2 = rowH;
+            int y2 = rowH * 2;
             RowText(card, L.T("folder"), null, y2 + Ui.Px(6), Ui.Px(44), pad);
             FlatButton open = SmallButton(L.T("open"), Ui.Px(72)), change = SmallButton(L.T("change"), Ui.Px(84));
             open.Location = new Point(contentW - pad - open.Width, y2 + Ui.Px(6) + (Ui.Px(44) - open.Height) / 2);
@@ -590,6 +615,7 @@ namespace LiteCap
             Result.HkFull = hks[1];
             Result.HkOcr = hks[2];
             Result.MaxKB = kb;
+            Result.Png = draft.Png;
             Result.AdjustSelection = draft.Edit;
             Result.ShowPreview = draft.Preview;
             Result.Folder = folder;

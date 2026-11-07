@@ -205,6 +205,17 @@ struct OutputTab: View {
         Form {
             Section {
                 HStack {
+                    RowLabel(icon: "photo", title: L.t("format"), desc: L.t("format_desc"))
+                    Spacer()
+                    Picker("", selection: $s.png) {
+                        Text("JPG").tag(false)
+                        Text("PNG").tag(true)
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(width: 140)
+                }
+                HStack {
                     RowLabel(icon: "doc.zipper", title: L.t("limit"), desc: L.t("limit_desc"))
                     Spacer()
                     Picker("", selection: $s.maxKB) {

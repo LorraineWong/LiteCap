@@ -1,4 +1,4 @@
-// LiteCap - tray screenshot tool that always outputs JPG files under a size limit (default 100 KB).
+// LiteCap - tray screenshot tool: JPG files always under a size limit (default 100 KB), or lossless PNG.
 // Core: entry point, Win32 interop, shared UI helpers, hotkey model, settings, JPEG fitting.
 // Kept C# 5 compatible so it builds with the csc.exe that ships with Windows (.NET Framework 4.x).
 
@@ -17,19 +17,20 @@ using System.Reflection;
 using Microsoft.Win32;
 
 [assembly: AssemblyTitle("LiteCap")]
-[assembly: AssemblyDescription("Screenshot tool that always saves JPG under a size limit")]
+[assembly: AssemblyDescription("Lightweight screenshot tool: JPG under a size limit, or PNG")]
 [assembly: AssemblyProduct("LiteCap")]
 [assembly: AssemblyCopyright("LiteCap")]
-[assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: AssemblyVersion("1.1.0.0")]
+[assembly: AssemblyFileVersion("1.1.0.0")]
 
 namespace LiteCap
 {
     static class Program
     {
         [STAThread]
-        static void Main()
+        static int Main(string[] args)
         {
+            if (args.Length >= 3 && args[0] == "--translate-selftest") return TranslateSelfTest.Run(args[1], args[2]);
             bool created;
             Settings boot = Settings.Load();
             L.Lang = boot.Lang;
@@ -39,7 +40,7 @@ namespace LiteCap
                 if (!created)
                 {
                     MessageBox.Show(L.T("running"), L.T("app"));
-                    return;
+                    return 0;
                 }
                 try { Environment.CurrentDirectory = Path.GetDirectoryName(Application.ExecutablePath); } catch { }
                 Native.EnableDpiAwareness();
@@ -47,6 +48,7 @@ namespace LiteCap
                 Application.SetCompatibleTextRenderingDefault(false);
                 Application.Run(new TrayApp());
             }
+            return 0;
         }
     }
 
@@ -230,7 +232,7 @@ namespace LiteCap
         public static readonly Color BlueSoft = Color.FromArgb(235, 242, 255);
         public static readonly Color IconInk = Color.FromArgb(71, 85, 105);
         public static readonly Color Danger = Color.FromArgb(220, 38, 38);
-        public const string Version = "1.0.0";
+        public const string Version = "1.1.0";
 
         public static GraphicsPath Round(Rectangle r, int radius)
         {
@@ -421,7 +423,8 @@ namespace LiteCap
         static readonly Hotkey OldFull = new Hotkey(Native.MOD_CONTROL | Native.MOD_ALT, Keys.F);
         const int HotkeyVersion = 4;
 
-        public int MaxKB = 100;              // hard limit; output is always strictly smaller
+        public int MaxKB = 100;              // hard limit for JPG; output is always strictly smaller
+        public bool Png = false;             // PNG is lossless and has no size limit
         public bool AdjustSelection = true;  // after dragging, allow move/resize before confirming
         public bool ShowPreview = true;      // small preview popup after each capture
         public bool Welcomed = false;
@@ -464,6 +467,7 @@ namespace LiteCap
                     string k = line.Substring(0, i).Trim(), v = line.Substring(i + 1).Trim();
                     int n;
                     if (k == "maxKB" && int.TryParse(v, out n) && n >= 10) s.MaxKB = n;
+                    else if (k == "format") s.Png = v == "png";
                     else if (k == "adjust") s.AdjustSelection = v == "1";
                     else if (k == "preview") s.ShowPreview = v == "1";
                     else if (k == "welcomed") s.Welcomed = v == "1";
@@ -501,6 +505,7 @@ namespace LiteCap
                 Directory.CreateDirectory(Path.GetDirectoryName(IniPath));
                 File.WriteAllLines(IniPath, new string[] {
                     "maxKB=" + MaxKB,
+                    "format=" + (Png ? "png" : "jpg"),
                     "adjust=" + (AdjustSelection ? "1" : "0"),
                     "preview=" + (ShowPreview ? "1" : "0"),
                     "welcomed=" + (Welcomed ? "1" : "0"),

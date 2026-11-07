@@ -40,6 +40,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }.store(in: &bag)
         settings.$maxKB.dropFirst().sink { [weak self] _ in DispatchQueue.main.async { self?.rebuildMenu() } }.store(in: &bag)
+        settings.$png.dropFirst().sink { [weak self] _ in DispatchQueue.main.async { self?.rebuildMenu() } }.store(in: &bag)
 
         _ = ensurePermission(prompt: true)
     }
@@ -69,7 +70,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func rebuildMenu() {
         let m = NSMenu()
-        let header = NSMenuItem(title: L.t("app") + "   ·   " + L.f("header", settings.maxKB), action: nil, keyEquivalent: "")
+        let format = settings.png ? "PNG" : L.f("header", settings.maxKB)
+        let header = NSMenuItem(title: L.t("app") + "   ·   " + format, action: nil, keyEquivalent: "")
         header.isEnabled = false
         m.addItem(header)
         m.addItem(.separator())
@@ -174,10 +176,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        let maxKB = settings.maxKB, folder = settings.folder, preview = settings.showPreview
+        let maxKB = settings.maxKB, folder = settings.folder, preview = settings.showPreview, png = settings.png
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             do {
-                let saved = try Output.save(image, maxKB: maxKB, folder: folder)
+                let saved = try Output.save(image, maxKB: maxKB, folder: folder, png: png)
                 DispatchQueue.main.async {
                     Output.copyFile(saved.url)
                     if preview {
@@ -186,7 +188,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         if saved.size != saved.original {
                             info += L.f("toast_orig", Int(saved.original.width), Int(saved.original.height))
                         }
-                        info += "  ·  " + L.f("toast_quality", saved.quality)
+                        info += "  ·  " + (png ? "PNG" : L.f("toast_quality", saved.quality))
                         PreviewToast.show(image: image, title: L.f("toast_title", kb), info: info, file: saved.url)
                     }
                     self?.busy = false

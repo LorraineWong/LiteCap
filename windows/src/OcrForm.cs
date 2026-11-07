@@ -1,11 +1,13 @@
 // Text-recognition window: screenshot preview with line boxes on the left, editable text on the right.
 // States: recognizing -> result (auto-copied) | no text | error (with a fix button when OCR is missing).
+// The result can be translated offline (Chinese <-> English); the first use downloads the translation pack.
 
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using ThreadPool = System.Threading.ThreadPool;
 using System.Windows.Forms;
 
 namespace LiteCap
@@ -112,7 +114,7 @@ namespace LiteCap
         readonly OcrPreview preview = new OcrPreview();
         readonly Panel editorFrame = new Panel();
         readonly TextBox box = new TextBox();
-        readonly FlatButton btnCopy, btnClose, btnRecapture, btnFix, segKeep, segMerge;
+        readonly FlatButton btnCopy, btnClose, btnRecapture, btnFix, segKeep, segMerge, btnTranslate;
         readonly Font fTitle, fStats, fBody, fSmall, fBtn, fState;
         readonly Timer copiedTimer = new Timer();
 
@@ -120,6 +122,11 @@ namespace LiteCap
         string title, stats = "", stateMessage = "";
         List<string> lines = new List<string>();
         bool merge;
+
+        // Translation state
+        string direction = "zh-en", ocrStats = "", trStats = "", originalText, translatedText;
+        bool showingTranslation, translating;
+        volatile bool closing;
 
         public static OcrForm Open(Image source, Action recapture)
         {
@@ -184,11 +191,15 @@ namespace LiteCap
             segKeep.Click += delegate { SetMerge(false); };
             segMerge.Click += delegate { SetMerge(true); };
 
+
             btnRecapture = MakeButton(L.T("ocr_again"), false);
             btnRecapture.Click += delegate { Close(); if (recapture != null) recapture(); };
             btnFix = MakeButton(L.T("ocr_fix"), false);
             btnFix.Visible = false;
             btnFix.Click += delegate { try { Process.Start("ms-settings:regionlanguage"); } catch { } };
+            btnTranslate = MakeButton(L.T("tr_to_en"), false);
+            btnTranslate.Visible = false;
+            btnTranslate.Click += delegate { TranslateClicked(); };
             btnClose = MakeButton(L.T("ocr_close"), false);
             btnClose.Click += delegate { Close(); };
             btnCopy = MakeButton(L.T("ocr_copy"), true);
@@ -241,6 +252,7 @@ namespace LiteCap
             int sw2 = TextRenderer.MeasureText(segMerge.Text, fSmall).Width + Ui.Px(26);
             segKeep.Bounds = new Rectangle(rx, top, sw1, segH);
             segMerge.Bounds = new Rectangle(rx + sw1 + Ui.Px(6), top, sw2, segH);
+
             int edTop = top + segH + Ui.Px(10);
             editorFrame.Bounds = new Rectangle(rx, edTop, rw, bottom - edTop);
             box.Bounds = new Rectangle(Ui.Px(14), Ui.Px(12), editorFrame.Width - Ui.Px(22), editorFrame.Height - Ui.Px(24));
@@ -248,6 +260,13 @@ namespace LiteCap
             int by = H - Ui.Px(54), bh = Ui.Px(38);
             btnRecapture.Bounds = new Rectangle(pad, by, TextRenderer.MeasureText(btnRecapture.Text, fBtn).Width + Ui.Px(36), bh);
             btnFix.Bounds = new Rectangle(btnRecapture.Right + Ui.Px(10), by, TextRenderer.MeasureText(btnFix.Text, fBtn).Width + Ui.Px(36), bh);
+            // Translate shares the Fix slot (Fix only shows on errors, Translate only with a result).
+            int tw = 0;
+            foreach (string k in new string[] { "tr_to_en", "tr_to_zh", "tr_show_orig", "tr_show_trans", "tr_working", "tr_installing" })
+                tw = Math.Max(tw, TextRenderer.MeasureText(L.T(k), fBtn).Width);
+            tw = Math.Max(tw, TextRenderer.MeasureText(L.F("tr_downloading", 100), fBtn).Width);
+            tw = Math.Max(tw, TextRenderer.MeasureText(L.F("tr_progress", 88, 88), fBtn).Width);
+            btnTranslate.Bounds = new Rectangle(btnRecapture.Right + Ui.Px(10), by, tw + Ui.Px(36), bh);
             int cw = Math.Max(Ui.Px(120), TextRenderer.MeasureText(L.T("ocr_copied_btn"), fBtn).Width + Ui.Px(36));
             btnCopy.Bounds = new Rectangle(W - pad - cw, by, cw, bh);
             int clw = Math.Max(Ui.Px(96), TextRenderer.MeasureText(btnClose.Text, fBtn).Width + Ui.Px(36));
@@ -277,7 +296,11 @@ namespace LiteCap
             int chars = 0;
             foreach (string l in lines) chars += l.Length;
             stats = L.F("ocr_stats", lines.Count, chars, string.IsNullOrEmpty(o.Language) ? "—" : o.Language);
+            ocrStats = stats;
             segKeep.Visible = segMerge.Visible = true;
+            direction = OfflineTranslator.DetectDirection(string.Join("\n", lines.ToArray()));
+            btnTranslate.Text = L.T(direction == "zh-en" ? "tr_to_en" : "tr_to_zh");
+            btnTranslate.Visible = true;
             box.Visible = true;
             ApplyText();
             btnCopy.Enabled = true;
@@ -316,6 +339,7 @@ namespace LiteCap
         void SelectLine(int i)
         {
             if (phase != Phase.Result || i < 0 || i >= lines.Count) return;
+            if (showingTranslation) ShowTranslation(false);
             preview.Selected = i;
             preview.Invalidate();
             int start;
@@ -339,6 +363,162 @@ namespace LiteCap
             btnCopy.Text = L.T("ocr_copied_btn");
             copiedTimer.Stop();
             copiedTimer.Start();
+        }
+
+        // ---------- translation ----------
+
+        void TranslateClicked()
+        {
+            if (translating || phase != Phase.Result) return;
+            if (translatedText != null) { ShowTranslation(!showingTranslation); return; }
+            if (OfflineTranslator.Installed) { StartTranslate(); return; }
+            DialogResult ask = MessageBox.Show(this, L.F("tr_dl_ask", OfflineTranslator.PackMB), L.T("tr_dl_title"),
+                MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (ask == DialogResult.Yes) StartDownload();
+        }
+
+        void SetBusy(bool on, string label)
+        {
+            translating = on;
+            btnTranslate.Enabled = !on;
+            btnTranslate.Text = label;
+        }
+
+        string IdleLabel()
+        {
+            if (translatedText != null) return L.T(showingTranslation ? "tr_show_orig" : "tr_show_trans");
+            return L.T(direction == "zh-en" ? "tr_to_en" : "tr_to_zh");
+        }
+
+        // Runs work on a pool thread and posts the outcome back to this window (if it is still open).
+        void Background(Action work, Action done, Action<Exception> failed)
+        {
+            ThreadPool.QueueUserWorkItem(delegate
+            {
+                Exception err = null;
+                try { work(); }
+                catch (Exception ex) { err = ex; }
+                if (closing || IsDisposed) return;
+                try
+                {
+                    BeginInvoke((MethodInvoker)delegate
+                    {
+                        if (IsDisposed) return;
+                        if (err == null) done();
+                        else if (!(err is OperationCanceledException)) failed(err);
+                        else SetBusy(false, IdleLabel());
+                    });
+                }
+                catch (InvalidOperationException) { }
+            });
+        }
+
+        void Post(Action a)
+        {
+            if (closing || IsDisposed) return;
+            try { BeginInvoke((MethodInvoker)delegate { if (!IsDisposed) a(); }); } catch (InvalidOperationException) { }
+        }
+
+        void StartDownload()
+        {
+            SetBusy(true, L.F("tr_downloading", 0));
+            int lastPct = -1;
+            Background(
+                delegate
+                {
+                    OfflineTranslator.Download(delegate (long got, long total)
+                    {
+                        int pct = total > 0 ? (int)(got * 100 / total) : 0;
+                        if (pct == lastPct) return;
+                        lastPct = pct;
+                        Post(delegate { btnTranslate.Text = pct >= 100 ? L.T("tr_installing") : L.F("tr_downloading", pct); });
+                    }, delegate { return closing; });
+                },
+                StartTranslate,
+                delegate (Exception ex)
+                {
+                    Crash.Log(ex, "translate-download");
+                    SetBusy(false, IdleLabel());
+                    if (MessageBox.Show(this, L.F("tr_dl_failed", ex.Message), L.T("tr_dl_title"), MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
+                    try { Process.Start(OfflineTranslator.PackPage); } catch { }
+                    InstallFromFile();
+                });
+        }
+
+        void InstallFromFile()
+        {
+            string file;
+            using (OpenFileDialog d = new OpenFileDialog())
+            {
+                d.Title = L.T("tr_pick_zip");
+                d.Filter = "LiteCap-Translate (*.zip)|*.zip";
+                if (d.ShowDialog(this) != DialogResult.OK) return;
+                file = d.FileName;
+            }
+            SetBusy(true, L.T("tr_installing"));
+            Background(
+                delegate { OfflineTranslator.Install(file, false); },
+                StartTranslate,
+                delegate (Exception ex)
+                {
+                    Crash.Log(ex, "translate-install");
+                    SetBusy(false, IdleLabel());
+                    MessageBox.Show(this, L.F("tr_failed", ex.Message), L.T("tr_dl_title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                });
+        }
+
+        void StartTranslate()
+        {
+            // Wrapped lines are joined first: the model translates sentences, not fragments.
+            originalText = box.Text;
+            List<string> current = new List<string>(box.Text.Replace("\r\n", "\n").Split('\n'));
+            string source = merge ? box.Text : WinOcr.MergeLines(current);
+            direction = OfflineTranslator.DetectDirection(source);
+            string dir = direction;
+            string result = null;
+            Stopwatch sw = Stopwatch.StartNew();
+            SetBusy(true, L.T("tr_working"));
+            Background(
+                delegate
+                {
+                    result = OfflineTranslator.Translate(source, dir, delegate { return closing; }, delegate (int done, int total)
+                    {
+                        if (total > 1) Post(delegate { btnTranslate.Text = L.F("tr_progress", Math.Min(done + 1, total), total); });
+                    });
+                },
+                delegate
+                {
+                    translatedText = result;
+                    bool toEn = dir == "zh-en";
+                    trStats = L.F("tr_stats", L.T(toEn ? "tr_zh" : "tr_en"), L.T(toEn ? "tr_en" : "tr_zh"), (sw.ElapsedMilliseconds / 1000.0).ToString("0.0"));
+                    translating = false;
+                    btnTranslate.Enabled = true;
+                    ShowTranslation(true);
+                    CopyText();
+                },
+                delegate (Exception ex)
+                {
+                    Crash.Log(ex, "translate");
+                    SetBusy(false, IdleLabel());
+                    MessageBox.Show(this, L.F("tr_failed", ex.Message), L.T("ocr_title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                });
+        }
+
+        void ShowTranslation(bool on)
+        {
+            if (on != showingTranslation)
+            {
+                // Keep any edits the user made in either view.
+                if (showingTranslation) translatedText = box.Text; else originalText = box.Text;
+                showingTranslation = on;
+                box.Text = on ? translatedText : originalText;
+            }
+            segKeep.Visible = segMerge.Visible = !on;
+            stats = on ? trStats : ocrStats;
+            preview.Selected = -1;
+            preview.Invalidate();
+            btnTranslate.Text = IdleLabel();
+            Invalidate();
         }
 
         // ---------- painting ----------
@@ -394,6 +574,8 @@ namespace LiteCap
         {
             if (disposing)
             {
+                closing = true;
+                ThreadPool.QueueUserWorkItem(delegate { try { OfflineTranslator.Unload(); } catch { } });
                 copiedTimer.Dispose();
                 image.Dispose();
                 fTitle.Dispose(); fStats.Dispose(); fBody.Dispose(); fSmall.Dispose(); fBtn.Dispose(); fState.Dispose();
