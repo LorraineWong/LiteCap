@@ -2,6 +2,11 @@
 
 [English](README.md)
 
+<a href="https://github.com/LorraineWong/LiteCap/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/LorraineWong/LiteCap?color=2563eb"></a>
+<a href="https://github.com/LorraineWong/LiteCap/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/LorraineWong/LiteCap/total?color=0891b2"></a>
+<img alt="Platforms" src="https://img.shields.io/badge/platform-Windows%2010%2F11%20%7C%20macOS%2013%2B-0f766e">
+<a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-1e3a8a"></a>
+
 截图默认存成 JPG、永远小于 100 KB（也可选无损 PNG），并以**文件形式**复制到剪贴板。自带标注、离线文字识别和离线翻译。支持 Windows 和 macOS。
 
 界面默认英文，可在 **Settings → General → Language** 切换为中文。
@@ -57,3 +62,30 @@
 - **macOS 15 及以上**：用系统自带的「翻译」，第一次使用时系统会提示下载语言。macOS 13–14 不显示翻译按钮。
 
 翻译质量：看懂意思没问题，专业术语可能生硬，不适合直接对外发布。
+
+## 从源码构建
+
+- **Windows**：双击 `windows/build.bat`（用 Windows 自带的 C# 编译器，不需要 Visual Studio）
+- **macOS**：先运行一次 `xcode-select --install`，再 `cd macos && ./build.sh`
+
+项目结构和发版流程见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
+## 反馈与参与开发
+
+LiteCap 是一个免费的个人业余项目，自己每天在用，分享出来希望对别人也有帮助。没有付费版，不收集任何数据。欢迎任何形式的反馈：
+
+- **遇到问题**：[提交 Bug](https://github.com/LorraineWong/LiteCap/issues/new?template=bug_report.yml)
+- **想要新功能**：[提建议](https://github.com/LorraineWong/LiteCap/issues/new?template=feature_request.yml)
+- **使用心得、提问、随便聊聊**：[Discussions](https://github.com/LorraineWong/LiteCap/discussions)
+- **想一起开发**：先看 [CONTRIBUTING.md](CONTRIBUTING.md)。翻译、在不同系统版本上测试、小修复都非常欢迎
+
+中文或英文都可以。觉得好用的话，点个 ⭐ 能帮更多人找到它。
+
+## 致谢
+
+- Windows 离线翻译使用 Helsinki-NLP 的 [OPUS-MT](https://github.com/Helsinki-NLP/Opus-MT) 模型（CC BY 4.0）、[Xenova](https://huggingface.co/Xenova) 的 int8 ONNX 转换版，以及 [ONNX Runtime](https://github.com/microsoft/onnxruntime)（MIT）。这些需单独下载，不打包在程序里
+- 文字识别使用 Windows 和 macOS 系统自带的 OCR 引擎
+
+## 许可证
+
+[MIT](LICENSE) © 2026 Lorraine Wong

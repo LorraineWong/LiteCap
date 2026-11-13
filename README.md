@@ -10,6 +10,13 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/LorraineWong/LiteCap/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/LorraineWong/LiteCap?color=2563eb"></a>
+  <a href="https://github.com/LorraineWong/LiteCap/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/LorraineWong/LiteCap/total?color=0891b2"></a>
+  <img alt="Platforms" src="https://img.shields.io/badge/platform-Windows%2010%2F11%20%7C%20macOS%2013%2B-0f766e">
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-1e3a8a"></a>
+</p>
+
+<p align="center">
   <a href="https://github.com/LorraineWong/LiteCap/releases/latest/download/LiteCap.exe">Download for Windows</a> ·
   <a href="https://github.com/LorraineWong/LiteCap/releases/latest/download/LiteCap.dmg">Download for macOS</a> ·
   <a href="CHANGELOG.md">Changelog</a> ·
@@ -108,47 +115,10 @@ Quality is good enough to understand a text, not to publish it: technical terms 
 
 ## Build from source
 
-### Windows
+- **Windows:** double-click `windows/build.bat` (uses the C# compiler that ships with Windows; no Visual Studio needed).
+- **macOS:** `xcode-select --install` once, then `cd macos && ./build.sh`.
 
-Double-click `windows/build.bat`. It uses the C# compiler included with Windows
-(`%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe`) and writes `windows/LiteCap.exe`.
-
-### macOS
-
-```bash
-xcode-select --install     # once
-cd macos
-./build.sh                 # produces LiteCap.app (ad-hoc signed)
-```
-
-Or run `macos/Install.command`, which builds, installs into Applications and opens the app.
-
-## Releasing
-
-GitHub Actions (`.github/workflows/release.yml`) builds both apps on every push. The Windows translation pack is
-built and published separately by `.github/workflows/translate-pack.yml` (run it manually with **publish**).
-To publish a version:
-
-1. Set the version in `windows/src/Core.cs` (`AssemblyVersion`, `AssemblyFileVersion`) and `macos/Info.plist` (`CFBundleShortVersionString`).
-2. Add a `## [x.y.z]` section to `CHANGELOG.md`.
-3. Commit and push, then either run `git tag vx.y.z && git push origin vx.y.z`,
-   or on GitHub open **Releases → Draft a new release**, create tag `vx.y.z` on `main` and click **Publish release**.
-
-The workflow checks that the tag, both version numbers and the changelog agree, then attaches
-`LiteCap.exe` and `LiteCap.dmg` and the changelog notes to the release (about 3 minutes).
-
-## Project layout
-
-```
-windows/        C# WinForms tray app (C# 5, .NET Framework 4.x)
-  src/          Core, Overlay (editor), Ocr, OcrForm, Translate, SettingsForm, Tray, I18n, ...
-  build.bat
-macos/          Swift AppKit + SwiftUI menu-bar app
-  Sources/
-  Resources/    App and menu-bar icons
-  build.sh, Install.command
-docs/images/    Screenshots used in this README
-```
+Details, project layout and the release process are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Privacy
 
@@ -156,3 +126,29 @@ Screenshots, recognized text, translations and settings stay on your computer. T
 one-time download of the Windows translation pack, and only after you agree to it.
 Logs are written only when an error occurs
 (Windows: `%APPDATA%\LiteCap\logs`, macOS: `~/Library/Logs/LiteCap`).
+
+## Feedback and contributing
+
+LiteCap is a free side project, built for daily use and shared in case it helps someone else. There is no paid
+version and no tracking. Feedback of any size is welcome:
+
+- **Something broken?** [Report a bug](https://github.com/LorraineWong/LiteCap/issues/new?template=bug_report.yml)
+- **Missing a feature?** [Suggest an idea](https://github.com/LorraineWong/LiteCap/issues/new?template=feature_request.yml)
+- **Questions, tips, or just saying hi** — [Discussions](https://github.com/LorraineWong/LiteCap/discussions)
+- **Want to help build it?** Read [CONTRIBUTING.md](CONTRIBUTING.md). Translations, testing on other Windows/macOS
+  versions, and small fixes are all great first contributions.
+
+Issues and discussions can be written in English or Chinese. 中文反馈同样欢迎。
+
+If LiteCap saves you time, a ⭐ helps other people find it.
+
+## Acknowledgements
+
+- Offline translation on Windows uses [OPUS-MT](https://github.com/Helsinki-NLP/Opus-MT) models by Helsinki-NLP
+  (CC BY 4.0), the int8 ONNX conversion by [Xenova](https://huggingface.co/Xenova), and
+  [ONNX Runtime](https://github.com/microsoft/onnxruntime) (MIT). They are downloaded separately, not bundled.
+- Text recognition uses the OCR engines built into Windows and macOS.
+
+## License
+
+[MIT](LICENSE) © 2026 Lorraine Wong

@@ -10,6 +10,8 @@ All notable changes to LiteCap are documented here. The project follows [Semanti
   - Windows: OPUS-MT models on ONNX Runtime, run on the PC. A one-time translation pack (about 170 MB) is downloaded on first use after confirmation; if the download is blocked, the zip can be downloaded in a browser and chosen manually. `LiteCap.exe` stays a single small file
   - macOS 15+: Apple's built-in Translation framework (the system asks once to download the languages). Hidden on macOS 13–14
 
+- **About page links**: GitHub, Send feedback and Check for updates (they open in the browser; LiteCap itself still makes no network request)
+
 ### Changed
 - Tray / menu-bar header and the preview card show "PNG" when PNG output is selected
 

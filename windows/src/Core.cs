@@ -233,6 +233,7 @@ namespace LiteCap
         public static readonly Color IconInk = Color.FromArgb(71, 85, 105);
         public static readonly Color Danger = Color.FromArgb(220, 38, 38);
         public const string Version = "1.1.0";
+        public const string RepoUrl = "https://github.com/LorraineWong/LiteCap";
 
         public static GraphicsPath Round(Rectangle r, int radius)
         {

@@ -842,7 +842,7 @@ namespace LiteCap
         public const int PackVersion = 1;
         public const int PackMB = 170;   // download size shown to the user
         public const string PackUrl = "https://github.com/LorraineWong/LiteCap/releases/download/translate-pack-1/LiteCap-Translate-1.zip";
-        public const string PackPage = "https://github.com/LorraineWong/LiteCap/releases/tag/translate-pack-1";
+        public const string PackPage = Ui.RepoUrl + "/releases/tag/translate-pack-1";
 
         static readonly object gate = new object();
         static Ort ort;
@@ -1058,7 +1058,7 @@ namespace LiteCap
                 log.AppendLine("installed=" + OfflineTranslator.Installed);
                 string[] samples = {
                     "今天天气很好，我们去公园散步。",
-                    "华为昇腾服务器支持大模型推理。数据中心的算力需求正在快速增长。",
+                    "服务器支持大模型推理。数据中心的算力需求正在快速增长。",
                     "请把这份报告翻译成英文！",
                     "The screenshot tool can recognize text and translate it offline.",
                     "Compute demand in data centers is growing fast. Customers care about cost."

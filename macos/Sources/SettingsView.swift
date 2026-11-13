@@ -342,12 +342,20 @@ struct AboutTab: View {
             .background(Color(NSColor.controlBackgroundColor))
             .clipShape(RoundedRectangle(cornerRadius: 10))
             HStack {
+                // Project links open in the browser; LiteCap itself makes no network request.
+                Button(L.t("link_github")) { openLink("") }
+                Button(L.t("link_feedback")) { openLink("/issues/new/choose") }
+                Button(L.t("link_updates")) { openLink("/releases/latest") }
                 Spacer()
                 Button(L.t("open_logs")) { Log.openFolder() }
             }
             Spacer()
         }
         .padding(20)
+    }
+
+    private func openLink(_ path: String) {
+        if let url = URL(string: "https://github.com/LorraineWong/LiteCap" + path) { NSWorkspace.shared.open(url) }
     }
 
     private var version: String {

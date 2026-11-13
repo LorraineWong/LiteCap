@@ -431,7 +431,7 @@ namespace LiteCap
                 new string[] { "P", "k_pen" }, new string[] { "H", "k_marker" }, new string[] { "T", "k_text" },
                 new string[] { "M", "k_mosaic" }, new string[] { "1 2 3", "k_size" }, new string[] { "Ctrl+Z", "k_undo" },
                 new string[] { "Enter", "k_done" }, new string[] { L.T("key_right"), "k_right" }, new string[] { "Esc", "k_cancel" }, new string[] { "O", "k_ocr" } };
-            int rowH = Ui.Px(36), pad = Ui.Px(20), cols = 2;
+            int rowH = Ui.Px(33), pad = Ui.Px(20), cols = 2;
             int rows = (keys.Length + cols - 1) / cols;
             Card card = NewCard(page, cardTop, rows * rowH + Ui.Px(16));
             int colW = (contentW - pad * 2) / cols;
@@ -446,7 +446,7 @@ namespace LiteCap
                 card.Controls.Add(keyCap);
                 card.Controls.Add(l);
             }
-            int ny = cardTop + card.Height + Ui.Px(14);
+            int ny = cardTop + card.Height + Ui.Px(10);
             Label ver = MakeLabel(L.F("about_ver", L.T("app"), Ui.Version), fSmall, Ui.InkSoft, Ui.Page);
             ver.Location = new Point(Ui.Px(2), ny + Ui.Px(6));
             page.Controls.Add(ver);
@@ -455,6 +455,23 @@ namespace LiteCap
             logs.Location = new Point(contentW - logs.Width, ny);
             logs.Click += delegate { Crash.OpenLogFolder(); };
             page.Controls.Add(logs);
+
+            // Project links: open in the browser, LiteCap itself makes no network request.
+            string[][] links = {
+                new string[] { "link_github", Ui.RepoUrl },
+                new string[] { "link_feedback", Ui.RepoUrl + "/issues/new/choose" },
+                new string[] { "link_updates", Ui.RepoUrl + "/releases/latest" } };
+            int lx = 0, ly = ny + logs.Height + Ui.Px(8);
+            foreach (string[] link in links)
+            {
+                string url = link[1];
+                FlatButton b = SmallButton(L.T(link[0]), TextRenderer.MeasureText(L.T(link[0]), fSmall).Width + Ui.Px(28));
+                b.BackColor = Ui.Page;
+                b.Location = new Point(lx, ly);
+                b.Click += delegate { try { Process.Start(url); } catch { } };
+                page.Controls.Add(b);
+                lx += b.Width + Ui.Px(8);
+            }
             return page;
         }
 

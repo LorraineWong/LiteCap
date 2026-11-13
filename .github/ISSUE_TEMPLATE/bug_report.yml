@@ -1,0 +1,57 @@
+name: Bug report
+description: Something doesn't work as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! 中文或英文都可以。
+        Please remove any personal or confidential information from screenshots before attaching them.
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Windows 11
+        - Windows 10
+        - macOS 15 or later
+        - macOS 13–14
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: LiteCap version
+      description: Shown in Settings → About, or the release you downloaded
+      placeholder: "1.1.0"
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Press Ctrl+1
+        2. Drag a region on the second monitor
+        3. …
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log or screenshot (optional)
+      description: |
+        Logs are written only when an error occurs.
+        Windows: %APPDATA%\LiteCap\logs · macOS: ~/Library/Logs/LiteCap
+  - type: input
+    id: setup
+    attributes:
+      label: Display setup (optional)
+      description: Number of monitors, scaling (e.g. 150%), Retina or not

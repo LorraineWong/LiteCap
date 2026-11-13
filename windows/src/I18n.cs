@@ -193,6 +193,9 @@ namespace LiteCap
             A("crash_fatal", "遇到严重错误，程序需要退出。错误已记录到日志，请重新打开轻截。",
                 "A serious error occurred and LiteCap has to close. It has been logged; please start LiteCap again.");
             A("open_logs", "打开日志文件夹", "Open log folder");
+            A("link_github", "GitHub 主页", "GitHub");
+            A("link_feedback", "反馈问题", "Send feedback");
+            A("link_updates", "检查新版本", "Check for updates");
             A("err_folder", "保存位置无效或无法写入", "The save location is invalid or not writable");
         }
     }
