@@ -410,7 +410,100 @@ final class OverlayView: NSView, NSTextFieldDelegate {
             if !r.intersects(a) || a == full { drawTag(hint, at: r, font: f, color: OverlayView.textMain) }
         }
 
+        if showMagnifier { drawMagnifier() }
         if showBars { drawBars() }
+    }
+
+    // MARK: magnifier (pixel loupe with coordinates and colour, as on Windows)
+
+    private static let magCells = 15      // pixels shown per side
+    private static let magZoom: CGFloat = 8
+    private static let magInfoH: CGFloat = 40
+
+    private var showMagnifier: Bool {
+        return (state == .idle || state == .creating || state == .resizing) && !dormant && !pending
+            && window?.isKeyWindow == true && full.contains(cursorPt)
+    }
+
+    private var magRect: CGRect {
+        let side = CGFloat(OverlayView.magCells) * OverlayView.magZoom
+        let w = side, h = side + OverlayView.magInfoH
+        var x = cursorPt.x + 20, y = cursorPt.y + 20
+        if x + w > full.width { x = cursorPt.x - 20 - w }
+        if y + h > full.height { y = cursorPt.y - 20 - h }
+        return CGRect(x: x, y: y, width: w, height: h)
+    }
+
+    /// Cursor position in image pixels, clamped to the image.
+    private var cursorPixel: (x: Int, y: Int) {
+        let s = shot.scale
+        let px = Int((cursorPt.x * s).rounded(.down)), py = Int((cursorPt.y * s).rounded(.down))
+        return (max(0, min(shot.image.width - 1, px)), max(0, min(shot.image.height - 1, py)))
+    }
+
+    private func pixelColor(x: Int, y: Int) -> (r: Int, g: Int, b: Int)? {
+        guard let one = shot.image.cropping(to: CGRect(x: x, y: y, width: 1, height: 1)) else { return nil }
+        var data = [UInt8](repeating: 0, count: 4)
+        let ok: Bool = data.withUnsafeMutableBytes { buf in
+            guard let ctx = CGContext(data: buf.baseAddress, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+                                      space: CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB(),
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+            ctx.draw(one, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+            return true
+        }
+        return ok ? (Int(data[0]), Int(data[1]), Int(data[2])) : nil
+    }
+
+    private func drawMagnifier() {
+        let m = magRect
+        let cells = OverlayView.magCells, half = cells / 2, zoom = OverlayView.magZoom
+        let side = CGFloat(cells) * zoom
+        let img = CGRect(x: m.minX, y: m.minY, width: side, height: side)
+        NSColor.black.setFill()
+        img.fill()
+
+        let c = cursorPixel
+        // Source square may run past the image edge: crop what exists and place it at the right offset.
+        let src = CGRect(x: c.x - half, y: c.y - half, width: cells, height: cells)
+        let bounded = src.intersection(CGRect(x: 0, y: 0, width: shot.image.width, height: shot.image.height))
+        if !bounded.isNull, let crop = shot.image.cropping(to: bounded), let ctx = NSGraphicsContext.current?.cgContext {
+            let dst = CGRect(x: img.minX + (bounded.minX - src.minX) * zoom, y: img.minY + (bounded.minY - src.minY) * zoom,
+                             width: bounded.width * zoom, height: bounded.height * zoom)
+            ctx.saveGState()
+            ctx.interpolationQuality = .none
+            // The view is flipped; flip the image back so it is drawn upright.
+            ctx.translateBy(x: 0, y: dst.maxY + dst.minY)
+            ctx.scaleBy(x: 1, y: -1)
+            ctx.draw(crop, in: dst)
+            ctx.restoreGState()
+        }
+
+        OverlayView.accent.withAlphaComponent(0.4).setFill()
+        CGRect(x: img.minX, y: img.minY + CGFloat(half) * zoom, width: side, height: zoom).fill()
+        CGRect(x: img.minX + CGFloat(half) * zoom, y: img.minY, width: zoom, height: side).fill()
+        NSColor.white.setStroke()
+        let center = NSBezierPath(rect: CGRect(x: img.minX + CGFloat(half) * zoom + 0.5, y: img.minY + CGFloat(half) * zoom + 0.5,
+                                               width: zoom - 1, height: zoom - 1))
+        center.lineWidth = 1
+        center.stroke()
+
+        let info = CGRect(x: m.minX, y: img.maxY, width: side, height: OverlayView.magInfoH)
+        OverlayView.barBg.setFill()
+        info.fill()
+        var text = "X \(c.x)  Y \(c.y)"
+        if let rgb = pixelColor(x: c.x, y: c.y) { text += "\nRGB \(rgb.r),\(rgb.g),\(rgb.b)" }
+        let para = NSMutableParagraphStyle()
+        para.alignment = .center
+        let a = NSAttributedString(string: text, attributes: [
+            .font: NSFont.monospacedSystemFont(ofSize: 11, weight: .regular),
+            .foregroundColor: OverlayView.textMain, .paragraphStyle: para])
+        let h = a.boundingRect(with: CGSize(width: side, height: info.height), options: [.usesLineFragmentOrigin]).height
+        a.draw(with: CGRect(x: info.minX, y: info.midY - h / 2, width: side, height: h), options: [.usesLineFragmentOrigin])
+
+        NSColor(white: 1, alpha: 0.35).setStroke()
+        let frame = NSBezierPath(rect: m.insetBy(dx: 0.5, dy: 0.5))
+        frame.lineWidth = 1
+        frame.stroke()
     }
 
     private func handleRects(_ r: CGRect) -> [CGRect] {

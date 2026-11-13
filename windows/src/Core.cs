@@ -417,12 +417,12 @@ namespace LiteCap
     {
         public static readonly Hotkey DefaultRegion = new Hotkey(Native.MOD_CONTROL, Keys.D1);
         public static readonly Hotkey DefaultFull = new Hotkey(Native.MOD_CONTROL, Keys.D2);
-        public static readonly Hotkey DefaultOcr = Hotkey.Empty;   // optional, off by default
+        public static readonly Hotkey DefaultOcr = new Hotkey(Native.MOD_CONTROL, Keys.D3);   // matches macOS Cmd+3
 
         // Defaults before v2.3; saved values equal to these are upgraded to the new defaults once.
         static readonly Hotkey OldRegion = new Hotkey(Native.MOD_CONTROL | Native.MOD_ALT, Keys.S);
         static readonly Hotkey OldFull = new Hotkey(Native.MOD_CONTROL | Native.MOD_ALT, Keys.F);
-        const int HotkeyVersion = 4;
+        const int HotkeyVersion = 5;
 
         public int MaxKB = 100;              // hard limit for JPG; output is always strictly smaller
         public bool Png = false;             // PNG is lossless and has no size limit
@@ -494,6 +494,8 @@ namespace LiteCap
                 }
                 if (hkVer < 4 && s.HkFull.Mods == Native.MOD_CONTROL && (s.HkFull.Key == Keys.D2 || s.HkFull.Key == Keys.D3))
                     s.HkFull = DefaultFull;   // window capture was removed; full screen takes Ctrl+2
+                if (hkVer < 5 && s.HkOcr.IsEmpty && !s.HkRegion.SameAs(DefaultOcr) && !s.HkFull.SameAs(DefaultOcr))
+                    s.HkOcr = DefaultOcr;   // v1.1: OCR gets Ctrl+3 by default, like Cmd+3 on macOS
             }
             catch { }
             return s;

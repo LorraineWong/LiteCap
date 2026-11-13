@@ -12,7 +12,10 @@ All notable changes to LiteCap are documented here. The project follows [Semanti
 
 - **About page links**: GitHub, Send feedback and Check for updates (they open in the browser; LiteCap itself still makes no network request)
 
+- **Magnifier on macOS**: pixel loupe with coordinates and colour while selecting, as on Windows
+
 ### Changed
+- **Windows: Recognize text now defaults to Ctrl+3**, matching ⌘3 on macOS (a hotkey you already set is kept)
 - Tray / menu-bar header and the preview card show "PNG" when PNG output is selected
 
 ## [1.0.0] — 2026-10-30
@@ -22,7 +25,7 @@ First public release, for Windows and macOS.
 ### Capture
 - Region capture (drag an area, or click to pick the window under the cursor) and full-screen capture across all monitors
 - Default hotkeys — Windows: Ctrl+1 region, Ctrl+2 full screen; macOS: ⌘1 region, ⌘2 full screen, ⌘3 recognize text. All customizable, with conflict checking
-- Region editing: move/resize handles, arrow-key nudging, magnifier with coordinates and pixel colour (Windows)
+- Region editing: move/resize handles, arrow-key nudging, magnifier with coordinates and pixel colour (Windows; macOS from 1.1.0)
 - "Region in 3 seconds": a countdown that never takes focus, so right-click menus and hover tips can be captured
 
 ### Annotation

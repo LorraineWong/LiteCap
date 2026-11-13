@@ -82,7 +82,7 @@ Download the new version from [Releases](https://github.com/LorraineWong/LiteCap
 |---|---|---|
 | Region capture (drag, or click a window) | `Ctrl+1` | `⌘1` |
 | Full screen (screen under the pointer) | `Ctrl+2` | `⌘2` |
-| Recognize text | tray menu / editor `O` / optional hotkey | `⌘3` / menu bar / editor `O` |
+| Recognize text | `Ctrl+3` / tray menu / editor `O` | `⌘3` / menu bar / editor `O` |
 | Region in 3 seconds | tray menu | menu bar |
 
 **Editor:** `R` rectangle · `E` ellipse · `A` arrow · `P` pen · `H` highlighter · `T` text · `M` mosaic · `1/2/3` size · `Ctrl/⌘+Z` undo · `O` recognize text
